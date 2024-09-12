@@ -190,7 +190,7 @@ def compute_metadata(
     rio_env_options: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     import rasterio
-    from rasterio import warp
+    from rasterio import warp, enums
     from terracotta.cog import validate
 
     row_data: Dict[str, Any] = {}
@@ -216,7 +216,11 @@ def compute_metadata(
             )
 
         with rasterio.open(path) as src:
-            if src.nodata is None and not has_alpha_band(src):
+            has_mask_band = False
+            if len(src.mask_flag_enums) > 0:
+                band_mask_flag_enums = src.mask_flag_enums[0]
+                has_mask_band = enums.MaskFlags.per_dataset in band_mask_flag_enums or enums.MaskFlags.alpha in band_mask_flag_enums
+            if src.nodata is None and not has_alpha_band(src) and not has_mask_band:
                 warnings.warn(
                     f"Raster file {path} does not have a valid nodata value, "
                     "and does not contain an alpha band. No data will be masked."
@@ -384,6 +388,11 @@ def get_raster_tile(
             height=dst_height,
         )
 
+        add_alpha = not has_alpha_band(src)
+        if src.count == 1 and src.dtypes[0] == rasterio.dtypes.uint32:
+            resampling_enum = reproject_enum = get_resampling_enum("nearest")
+            add_alpha = False
+
         # construct VRT
         vrt = es.enter_context(
             WarpedVRT(
@@ -393,7 +402,7 @@ def get_raster_tile(
                 transform=vrt_transform,
                 width=vrt_width,
                 height=vrt_height,
-                add_alpha=not has_alpha_band(src),
+                add_alpha=add_alpha,
             )
         )
 

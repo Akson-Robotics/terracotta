@@ -148,6 +148,35 @@ def get_singleband(tile_z: int, tile_y: int, tile_x: int, keys: str) -> Response
     tile_xyz = (tile_x, tile_y, tile_z)
     return _get_singleband_image(keys, tile_xyz)
 
+@TILE_API.route(
+    "/singleband/<path:keys>/<int:tile_z>/<int:tile_x>/<int:tile_y>.tiff",
+    methods=["GET"],
+)
+def get_singleband_tiff(tile_z: int, tile_y: int, tile_x: int, keys: str) -> Response:
+    """Return single-band PNG image of requested tile
+    ---
+    get:
+        summary: /singleband (tile)
+        description: Return single-band PNG image of requested XYZ tile
+        parameters:
+            - in: path
+              schema: SinglebandQuerySchema
+            - in: query
+              schema: SinglebandOptionSchema
+        responses:
+            200:
+                description:
+                    PNG image of requested tile
+            400:
+                description:
+                    Invalid query parameters
+            404:
+                description:
+                    No dataset found for given key combination
+    """
+    tile_xyz = (tile_x, tile_y, tile_z)
+    return _get_singleband_image(keys, tile_xyz, is_tiff=True)
+
 
 class SinglebandPreviewSchema(Schema):
     keys = fields.String(
@@ -180,9 +209,34 @@ def get_singleband_preview(keys: str) -> Response:
     """
     return _get_singleband_image(keys)
 
+@TILE_API.route("/singleband/<path:keys>/preview.tiff", methods=["GET"])
+def get_singleband_preview_tiff(keys: str) -> Response:
+    """Return single-band PNG preview image of requested dataset
+    ---
+    get:
+        summary: /singleband (preview)
+        description: Return single-band PNG preview image of requested dataset
+        parameters:
+            - in: path
+              schema: SinglebandPreviewSchema
+            - in: query
+              schema: SinglebandOptionSchema
+        responses:
+            200:
+                description:
+                    PNG image of requested tile
+            400:
+                description:
+                    Invalid query parameters
+            404:
+                description:
+                    No dataset found for given key combination
+    """
+    return _get_singleband_image(keys, is_tiff=True)
+
 
 def _get_singleband_image(
-    keys: str, tile_xyz: Optional[Tuple[int, int, int]] = None
+    keys: str, tile_xyz: Optional[Tuple[int, int, int]] = None, is_tiff: bool = False
 ) -> Response:
     from terracotta.handlers.singleband import singleband
 
@@ -194,6 +248,6 @@ def _get_singleband_image(
     if options.get("colormap", "") == "explicit":
         options["colormap"] = options.pop("explicit_color_map")
 
-    image = singleband(parsed_keys, tile_xyz=tile_xyz, **options)
+    image = singleband(parsed_keys, tile_xyz=tile_xyz, is_tiff=is_tiff, **options)
 
     return send_file(image, mimetype="image/png")

@@ -5,6 +5,9 @@ Handle /singleband API endpoint.
 
 from typing import Sequence, Mapping, Union, Tuple, Optional, TypeVar, cast
 from typing.io import BinaryIO
+import numpy as np
+import rasterio
+from io import BytesIO
 
 import collections
 
@@ -23,6 +26,7 @@ RGBA = Tuple[Number, Number, Number, Number]
 def singleband(
     keys: Union[Sequence[str], Mapping[str, str]],
     tile_xyz: Optional[Tuple[int, int, int]] = None,
+    is_tiff: bool = False,
     *,
     colormap: Union[str, Mapping[Number, RGBA], None] = None,
     stretch_range: Optional[Tuple[NumberOrString, NumberOrString]] = None,
@@ -50,6 +54,13 @@ def singleband(
         tile_data = xyz.get_tile_data(
             driver, keys, tile_xyz, tile_size=tile_size, preserve_values=preserve_values
         )
+
+    if tile_data.dtype == np.uint32 or is_tiff:
+        sio = BytesIO()
+        with rasterio.open(sio, 'w', driver='GTiff', width=tile_data.shape[1], height=tile_data.shape[0], count=1, dtype=tile_data.dtype) as dst:
+            dst.write(tile_data, 1)
+        sio.seek(0)
+        return sio
 
     if preserve_values:
         # bin output image into supplied labels, starting at 1
