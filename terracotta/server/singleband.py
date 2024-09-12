@@ -250,4 +250,4 @@ def _get_singleband_image(
 
     image = singleband(parsed_keys, tile_xyz=tile_xyz, is_tiff=is_tiff, **options)
 
-    return send_file(image, mimetype="image/png")
+    return send_file(image, mimetype="image/png" if not is_tiff else "image/tiff")
