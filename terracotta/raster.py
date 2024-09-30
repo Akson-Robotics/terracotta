@@ -420,4 +420,4 @@ def get_raster_tile(
             if src.nodata is not None:
                 mask |= tile_data == src.nodata
 
-    return np.ma.masked_array(tile_data, mask=mask)
+    return np.ma.masked_array(tile_data, mask=mask, fill_value=0 if src.count == 1 and src.dtypes[0] == rasterio.dtypes.uint32 else None)
